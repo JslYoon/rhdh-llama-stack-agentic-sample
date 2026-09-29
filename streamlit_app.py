@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 import streamlit as st
-from llama_stack_client import LlamaStackClient
+from ogx_client import OgxClient
 
 from src.constants import (
     DEFAULT_GUARDRAIL_MODEL,
@@ -216,8 +216,9 @@ def count_vector_stores() -> "int":
     count the number of vector stores in the database
     """
     try:
-        client = LlamaStackClient(base_url=LLAMA_STACK_URL)
-        vector_stores = client.vector_stores.list() or []
+        client = OgxClient(base_url=LLAMA_STACK_URL)
+        vs_resp = client.vector_stores.list()
+        vector_stores = vs_resp.data if vs_resp else []
         vector_store_list = list(vector_stores)
         count = len(vector_store_list)
         logger.debug(f"Found {count} vector stores in database")
@@ -313,7 +314,7 @@ async def check_and_run_ingestion_if_needed() -> "None":
         # check if vector stores for all pipelines exist
         ingestion_service = get_ingestion_service()
         pipelines = ingestion_service.pipelines
-        temp_client = LlamaStackClient(base_url=LLAMA_STACK_URL)
+        temp_client = OgxClient(base_url=LLAMA_STACK_URL)
         temp_rag_service = RAGService(
             pipelines=pipelines, llama_stack_url=LLAMA_STACK_URL
         )

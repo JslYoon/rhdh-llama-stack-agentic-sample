@@ -3,7 +3,7 @@ import time
 from typing import Any, cast
 
 from langgraph.graph import START, StateGraph
-from llama_stack_client.types import ResponseObject
+from ogx_client import OpenAIResponseObject as ResponseObject
 
 from src.constants import (
     DEFAULT_INFERENCE_MODEL,

@@ -2,7 +2,7 @@ import os
 import time
 from typing import Any, cast
 
-from llama_stack_client.types import ResponseObject
+from ogx_client import OpenAIResponseObject as ResponseObject
 from openai import OpenAI
 from openai.types.chat import ChatCompletionUserMessageParam
 

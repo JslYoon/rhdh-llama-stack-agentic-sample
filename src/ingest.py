@@ -4,7 +4,6 @@ import os
 import sys
 import tempfile
 import time
-from pathlib import Path
 from typing import Any, cast
 
 import requests
@@ -16,8 +15,11 @@ from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
 from github import Auth, Github
 from github.ContentFile import ContentFile
 from github.Repository import Repository
-from llama_stack_client import LlamaStackClient
-from llama_stack_client.types.file import File
+from ogx_client import OgxClient, OpenAIAttachFileRequest
+from ogx_client import (
+    OpenAICreateVectorStoreRequestWithExtraBody as CreateVectorStoreRequest,
+)
+from ogx_client import OpenAIFileObject as File
 
 from src.constants import (
     DEFAULT_CHUNK_SIZE_IN_TOKENS,
@@ -219,7 +221,7 @@ class IngestionService:
         self,
         max_retries: "int" = DEFAULT_LLAMA_STACK_WAITING_RETRIES,
         retry_delay: "int" = DEFAULT_LLAMA_STACK_RETRY_DELAY,
-    ) -> "LlamaStackClient":
+    ) -> "OgxClient":
         logger.debug(
             f"Connecting Llama Stack Client to Server at {self.llama_stack_url}..."
         )
@@ -229,7 +231,7 @@ class IngestionService:
 
             if result["connected"]:
                 logger.debug("Llama Stack Client connected successfully!")
-                return LlamaStackClient(base_url=self.llama_stack_url)
+                return OgxClient(base_url=self.llama_stack_url)
 
             if attempt < max_retries - 1:
                 logger.info(
@@ -479,7 +481,7 @@ class IngestionService:
                     tmp_file.write(cleaned_text)
 
                 file_create_response = self.client.files.create(
-                    file=Path(tmp_file_path), purpose="assistants"
+                    file=str(tmp_file_path), purpose="assistants"
                 )
 
                 file_id = file_create_response.id
@@ -540,7 +542,7 @@ class IngestionService:
         try:
             file_ingest_response = self.client.vector_stores.files.create(
                 vector_store_id=vector_store_id,
-                file_id=doc.id,
+                open_ai_attach_file_request=OpenAIAttachFileRequest(file_id=doc.id),
             )
 
             # check the actual status of the insertion
@@ -602,7 +604,8 @@ class IngestionService:
             # call to a separate thread so the asyncio (event) loop keeps
             # running.
             vector_store = await asyncio.to_thread(
-                self.client.vector_stores.create, name=vector_store_name
+                self.client.vector_stores.create,
+                CreateVectorStoreRequest(name=vector_store_name),
             )
             self.vector_store_ids.append(vector_store.id)
         except Exception as e:
@@ -614,8 +617,8 @@ class IngestionService:
 
                 # vector store exists, find it by name to get its ID
                 # to continue ingestion
-                vector_stores = await asyncio.to_thread(self.client.vector_stores.list)
-                for vs in vector_stores or []:
+                vs_resp = await asyncio.to_thread(self.client.vector_stores.list)
+                for vs in (vs_resp.data if vs_resp else []):
                     if vs.name == vector_store_name:
                         vector_store = vs
                         break
@@ -631,11 +634,14 @@ class IngestionService:
                 # when multiple parallel sessions race to populate the same store.
                 # TODO: investigate more robust approaches
                 try:
-                    existing_files = await asyncio.to_thread(
+                    existing_files_resp = await asyncio.to_thread(
                         self.client.vector_stores.files.list,
                         vector_store_id=vector_store.id,
                     )
-                    if existing_files and len(list(existing_files)) > 0:
+                    existing_files = (
+                        existing_files_resp.data if existing_files_resp else []
+                    )
+                    if existing_files and len(existing_files) > 0:
                         logger.info(
                             f"Vector store '{vector_store_name}' already has files, "
                             f"skipping document insertion"

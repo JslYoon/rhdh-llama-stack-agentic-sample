@@ -4,8 +4,8 @@ import os
 import threading
 from typing import Any
 
-from llama_stack_client import LlamaStackClient
-from llama_stack_client.types import ResponseObject
+from ogx_client import OgxClient
+from ogx_client import OpenAIResponseObject as ResponseObject
 from typing_extensions import Literal
 
 from src.types import WorkflowState
@@ -207,7 +207,7 @@ def check_llama_stack_availability(
     }
 
     try:
-        client = LlamaStackClient(base_url=base_url)
+        client = OgxClient(base_url=base_url)
         models_response = client.models.list()
         result["connected"] = True
 
@@ -216,7 +216,7 @@ def check_llama_stack_availability(
 
         available_model_ids = set()
         if models_response:
-            for model in models_response:
+            for model in models_response.data:
                 model_id = getattr(model, "identifier", None) or getattr(
                     model, "id", None
                 )

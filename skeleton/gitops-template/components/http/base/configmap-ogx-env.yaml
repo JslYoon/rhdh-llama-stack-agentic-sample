@@ -1,17 +1,17 @@
-# Llama Stack Environment Variables ConfigMap
+# OGX Environment Variables ConfigMap
 # Contains non-sensitive configuration values from the template.
-# These are injected as environment variables into the Llama Stack container.
+# These are injected as environment variables into the OGX container.
 apiVersion: v1
 kind: ConfigMap
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  name: ${{ values.name }}-llama-stack-env
+  name: ${{ values.name }}-ogx-env
   labels:
     app.kubernetes.io/instance: ${{ values.name }}
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: ${{ values.name }}-llama-stack-env
-    app.kubernetes.io/component: llama-stack
+    app.kubernetes.io/name: ${{ values.name }}-ogx-env
+    app.kubernetes.io/component: ogx
 data:
   # vLLM Server URL
   VLLM_URL: "${{ values.vllmUrl }}"

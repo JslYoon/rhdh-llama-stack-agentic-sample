@@ -366,7 +366,7 @@ class TestCheckLlamaStackAvailability:
         mock_client = Mock()
         mock_client.models.list.return_value = []
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
+        with patch("src.utils.OgxClient", return_value=mock_client):
             result = check_llama_stack_availability("http://localhost:8321")
 
         assert result["connected"] is True
@@ -381,9 +381,9 @@ class TestCheckLlamaStackAvailability:
         mock_model2.identifier = "model-2"
 
         mock_client = Mock()
-        mock_client.models.list.return_value = [mock_model1, mock_model2]
+        mock_client.models.list.return_value = Mock(data=[mock_model1, mock_model2])
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
+        with patch("src.utils.OgxClient", return_value=mock_client):
             result = check_llama_stack_availability(
                 "http://localhost:8321",
                 required_models=["model-1", "model-2"],
@@ -399,9 +399,9 @@ class TestCheckLlamaStackAvailability:
         mock_model.identifier = "model-1"
 
         mock_client = Mock()
-        mock_client.models.list.return_value = [mock_model]
+        mock_client.models.list.return_value = Mock(data=[mock_model])
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
+        with patch("src.utils.OgxClient", return_value=mock_client):
             result = check_llama_stack_availability(
                 "http://localhost:8321",
                 required_models=["model-1", "model-2", "model-3"],
@@ -416,7 +416,7 @@ class TestCheckLlamaStackAvailability:
         mock_client = Mock()
         mock_client.models.list.return_value = []
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
+        with patch("src.utils.OgxClient", return_value=mock_client):
             result = check_llama_stack_availability(
                 "http://localhost:8321",
                 required_models=["model-1", "model-2"],
@@ -428,7 +428,7 @@ class TestCheckLlamaStackAvailability:
 
     def test_connection_refused_error(self):
         with patch(
-            "src.utils.LlamaStackClient",
+            "src.utils.OgxClient",
             side_effect=Exception("Connection refused"),
         ):
             result = check_llama_stack_availability("http://localhost:8321")
@@ -441,7 +441,7 @@ class TestCheckLlamaStackAvailability:
 
     def test_connect_error(self):
         with patch(
-            "src.utils.LlamaStackClient",
+            "src.utils.OgxClient",
             side_effect=Exception("ConnectError: Failed to establish connection"),
         ):
             result = check_llama_stack_availability("http://localhost:8321")
@@ -451,7 +451,7 @@ class TestCheckLlamaStackAvailability:
 
     def test_timeout_error(self):
         with patch(
-            "src.utils.LlamaStackClient",
+            "src.utils.OgxClient",
             side_effect=Exception("Request timeout exceeded"),
         ):
             result = check_llama_stack_availability("http://localhost:8321")
@@ -461,7 +461,7 @@ class TestCheckLlamaStackAvailability:
 
     def test_generic_error(self):
         with patch(
-            "src.utils.LlamaStackClient",
+            "src.utils.OgxClient",
             side_effect=Exception("Some unexpected error"),
         ):
             result = check_llama_stack_availability("http://localhost:8321")
@@ -475,9 +475,9 @@ class TestCheckLlamaStackAvailability:
         mock_model.id = "model-with-id"
 
         mock_client = Mock()
-        mock_client.models.list.return_value = [mock_model]
+        mock_client.models.list.return_value = Mock(data=[mock_model])
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
+        with patch("src.utils.OgxClient", return_value=mock_client):
             result = check_llama_stack_availability(
                 "http://localhost:8321",
                 required_models=["model-with-id"],
@@ -491,7 +491,7 @@ class TestCheckLlamaStackAvailability:
         mock_client = Mock()
         mock_client.models.list.return_value = []
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
+        with patch("src.utils.OgxClient", return_value=mock_client):
             result = check_llama_stack_availability(
                 "http://localhost:8321",
                 required_models=[],
@@ -505,7 +505,7 @@ class TestCheckLlamaStackAvailability:
         mock_client = Mock()
         mock_client.models.list.return_value = None
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
+        with patch("src.utils.OgxClient", return_value=mock_client):
             result = check_llama_stack_availability(
                 "http://localhost:8321",
                 required_models=["model-1"],

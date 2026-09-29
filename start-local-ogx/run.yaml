@@ -1,5 +1,5 @@
 version: 2
-image_name: llama-stack-examples
+image_name: ogx-examples
 
 apis:
 - agents
