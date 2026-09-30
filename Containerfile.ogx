@@ -20,10 +20,11 @@ RUN dnf install -y gcc python3-devel make && \
     pip3.12 install uv
 
 # Copy OGX specific dependency specification
-COPY ./pyproject.ogx.toml ./pyproject.toml
+COPY ./start-local-ogx/pyproject.toml ./pyproject.toml
+COPY ./start-local-ogx/uv.lock ./uv.lock
 
-# Install Python dependencies
-RUN uv sync --no-dev
+# Install Python dependencies (deps only; the ogx-server project has no package to build)
+RUN uv sync --no-dev --no-install-project
 
 # =============================================================================
 # RUNTIME STAGE
@@ -46,7 +47,7 @@ COPY --from=builder --chown=1001:1001 /app-root/.venv ./.venv
 
 # Copy OGX configuration
 # Uses ${env.VAR} syntax - resolved at runtime
-COPY --chown=1001:1001 ./run.yaml ./
+COPY --chown=1001:1001 ./start-local-ogx/run.yaml ./
 
 # Create data directories for runtime
 USER root

@@ -422,9 +422,7 @@ spec:
           defaultBranch: main
           # Application container image
           appContainer: quay.io/rh-ee-lyoon/agentic-sample:latest
-          # TODO: switch back to agentic-ogx once that image is built and published.
-          # Using the existing public agentic-llama-stack image as the runtime sidecar for now.
-          ogxContainer: quay.io/redhat-ai-dev/agentic-llama-stack:latest
+          ogxContainer: quay.io/rh-ee-lyoon/agentic-ogx:latest
           appPort: 8501
           # OGX configuration
           vllmUrl: ${{ parameters.vllmUrl }}
