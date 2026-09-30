@@ -14,10 +14,14 @@ metadata:
     app.kubernetes.io/component: ogx
 data:
   # vLLM Server URL
+  # OGX 1.2.5 reaches vLLM/Ollama through the OpenAI-compatible inference
+  # mixin, which appends /models and /chat/completions to this base URL, so it
+  # must end in /v1. Make sure the vllmUrl value provided at scaffold time ends
+  # in /v1.
   VLLM_URL: "${{ values.vllmUrl }}"
-  
+
   # Ollama Server URL (points to deployed Ollama service)
-  OLLAMA_URL: "http://${{ values.name }}-ollama:11434"
+  OLLAMA_URL: "http://${{ values.name }}-ollama:11434/v1"
   
   # Safety Model for guardrails
   SAFETY_MODEL: "${{ values.safetyModel }}"

@@ -1,101 +1,115 @@
 version: 2
-image_name: ogx-examples
+image_name: ogx-agentic
 
+# Migrated to the OGX 1.2.5 API surface. The classic Llama Stack "agents" and
+# "safety" APIs were removed; agentic behaviour is now served by the
+# responses / skills / interactions / messages APIs. Provider ids are made
+# conditional (${env.VAR:+id}) so a provider only registers when its backing
+# env var is set, mirroring the upstream "starter" distribution.
 apis:
-- agents
 - inference
-- safety
 - tool_runtime
 - vector_io
 - files
-- vector_stores
+- file_processors
+- responses
+- skills
+- interactions
+- messages
+- batches
 
 providers:
   inference:
-  - provider_id: ollama
+  - provider_id: ${env.OLLAMA_URL:+ollama}
     provider_type: remote::ollama
     config:
-      url: ${env.OLLAMA_URL:=http://localhost:11434}
-  - provider_id: vllm
+      base_url: ${env.OLLAMA_URL:=http://localhost:11434/v1}
+  - provider_id: ${env.VLLM_URL:+vllm}
     provider_type: remote::vllm
     config:
-      url: ${env.VLLM_URL}
-      api_token: ${env.VLLM_API_KEY}
-      max_tokens: 4096
-      tsl_verify: false
-  # - provider_id: gemini
-  #   provider_type: remote::gemini
-  #   config:
-  #     api_key: ${env.GEMINI_API_KEY:=}
-  - provider_id: openai
+      base_url: ${env.VLLM_URL:=}
+      api_token: ${env.VLLM_API_KEY:=fake}
+      max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+      network:
+        tls:
+          verify: ${env.VLLM_TLS_VERIFY:=false}
+  - provider_id: ${env.OPENAI_API_KEY:+openai}
     provider_type: remote::openai
     config:
       api_key: ${env.OPENAI_API_KEY:=}
       base_url: ${env.OPENAI_BASE_URL:=https://api.openai.com/v1}
-  safety:
-  - provider_id: llama-guard
-    provider_type: inline::llama-guard
-    config:
-      excluded_categories: []
-  tool_runtime:
-    - provider_id: model-context-protocol
-      provider_type: remote::model-context-protocol
-      config: {}
-    - provider_id: rag-runtime
-      provider_type: inline::rag-runtime
-      config: {}
-  agents:
-  - provider_id: meta-reference
-    provider_type: inline::meta-reference
-    config:
-      persistence:
-        agent_state:
-          backend: kv_default
-          namespace: agents
-        responses:
-          backend: sql_default
-          table_name: responses
   vector_io:
   - provider_id: faiss
     provider_type: inline::faiss
     config:
       persistence:
-        namespace: faiss
+        namespace: vector_io::faiss
         backend: kv_default
-      embedding_model: ollama/all-minilm:l6-v2
-      embedding_dimension: 384
   files:
-  - provider_id: localfs
+  - provider_id: builtin-files
     provider_type: inline::localfs
     config:
-      storage_dir: ${env.FILES_STORAGE_DIR:=~/.llama/files}
+      storage_dir: ${env.FILES_STORAGE_DIR:=/data/files}
       metadata_store:
+        table_name: files_metadata
         backend: sql_default
-        table_name: files
-
-registered_resources:
-  models: []
-  shields:
-  - provider_id: llama-guard
-    shield_id: ${env.SAFETY_MODEL:=ollama/llama-guard3:8b}
-    provider_shield_id: null
-
-  vector_dbs: []
-  datasets: []
-  scoring_fns: []
-  benchmarks: []
-  tool_groups:
-    - provider_id: rag-runtime
-      toolgroup_id: builtin::rag
+  file_processors:
+  - provider_id: auto
+    provider_type: inline::auto
+  responses:
+  - provider_id: builtin
+    provider_type: inline::builtin
+    config:
+      persistence:
+        responses:
+          table_name: responses
+          backend: sql_default
+          max_write_queue_size: 10000
+          num_writers: 4
+      memory_config:
+        default_vector_store_provider_id: faiss
+  skills:
+  - provider_id: builtin
+    provider_type: inline::builtin
+    config:
+      persistence:
+        namespace: skills
+        backend: kv_default
+  interactions:
+  - provider_id: builtin
+    provider_type: inline::builtin
+    config:
+      store:
+        table_name: interactions
+        backend: sql_default
+  messages:
+  - provider_id: builtin
+    provider_type: inline::builtin
+    config:
+      kvstore:
+        namespace: message_batches
+        backend: kv_default
+  batches:
+  - provider_id: reference
+    provider_type: inline::reference
+    config:
+      sqlstore:
+        table_name: batches
+        backend: sql_default
+  tool_runtime:
+  - provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
+  - provider_id: file-search
+    provider_type: inline::file-search
 
 storage:
   backends:
     kv_default:
       type: kv_sqlite
-      db_path: ${env.KV_SQL_STORE_DIR:=~/.llama}/kvstore.db
+      db_path: ${env.KV_SQL_STORE_DIR:=/data}/kvstore.db
     sql_default:
       type: sql_sqlite
-      db_path: ${env.SQLITE_STORE_DIR:=~/.llama}/sql_store.db
+      db_path: ${env.SQLITE_STORE_DIR:=/data}/sql_store.db
   stores:
     metadata:
       namespace: registry
@@ -108,6 +122,16 @@ storage:
     conversations:
       table_name: openai_conversations
       backend: sql_default
+    prompts:
+      table_name: prompts
+      backend: sql_default
+    connectors:
+      table_name: connectors
+      backend: sql_default
+
+registered_resources:
+  models: []
+  vector_stores: []
 
 server:
   port: 8321
@@ -117,3 +141,5 @@ vector_stores:
   default_embedding_model:
     provider_id: ollama
     model_id: all-minilm:l6-v2
+
+connectors: []

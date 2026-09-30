@@ -34,4 +34,9 @@ dependencies = [
     
     # Character encoding detection (required for file processing in vector stores)
     "chardet>=5.2.0",
+
+    # Document conversion for the file_processors "auto" provider
+    # (the inline::auto provider declares chardet + pypdf + markitdown[all])
+    "pypdf>=6.13.0",
+    "markitdown[all]>=0.1.0",
 ]
