@@ -35,13 +35,10 @@ class TestClassificationAgent:
     def test_classification_agent_with_unsafe_content(
         self, sample_workflow_state, mock_openai_client
     ):
-        moderation_result = Mock()
-        moderation_result.flagged = True
-        moderation_result.categories = Mock(violence=Mock(name="violence"))
-        moderation_result.categories.model_extra = {"violence": True}
-        mock_moderation_response = Mock()
-        mock_moderation_response.results = [moderation_result]
-        mock_openai_client.moderations.create.return_value = mock_moderation_response
+        # Llama Guard flags unsafe input with "unsafe" + violated S-codes.
+        mock_guard_completion = Mock()
+        mock_guard_completion.choices = [Mock(message=Mock(content="unsafe\nS1"))]
+        mock_openai_client.chat.completions.create.return_value = mock_guard_completion
 
         result = classification_agent(
             sample_workflow_state,

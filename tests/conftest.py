@@ -103,13 +103,6 @@ def mock_llama_stack_client():
 def mock_openai_client():
     client = Mock()
 
-    moderation_result = Mock()
-    moderation_result.flagged = False
-    moderation_result.categories = Mock(model_extra={})
-    mock_moderation_response = Mock()
-    mock_moderation_response.results = [moderation_result]
-    client.moderations.create.return_value = mock_moderation_response
-
     mock_completion = Mock()
     mock_completion.choices = [Mock(message=Mock(content="Test response"))]
     client.chat.completions.create.return_value = mock_completion
