@@ -161,7 +161,7 @@ class TestInitialize:
         service = RAGService(pipelines=pipelines)
 
         with patch(
-            "src.responses.LlamaStackClient", return_value=mock_llama_stack_client
+            "src.responses.OgxClient", return_value=mock_llama_stack_client
         ):
             with patch("src.responses.OpenAI") as mock_openai:
                 with patch.object(service, "load_vector_stores", return_value=True):
@@ -176,7 +176,7 @@ class TestInitialize:
         service = RAGService(pipelines=pipelines)
 
         with patch(
-            "src.responses.LlamaStackClient",
+            "src.responses.OgxClient",
             side_effect=Exception("Connection error"),
         ):
             result = service.initialize()
@@ -198,7 +198,9 @@ class TestLoadVectorStores:
         mock_vs2.id = "hr-vs-id"
         mock_vs2.name = "hr-vector-db"
 
-        mock_llama_stack_client.vector_stores.list.return_value = [mock_vs1, mock_vs2]
+        mock_llama_stack_client.vector_stores.list.return_value = Mock(
+            data=[mock_vs1, mock_vs2]
+        )
 
         pipelines = []
         service = RAGService(pipelines=pipelines)
@@ -496,7 +498,9 @@ class TestGetFilesFromVectorStore:
 
         mock_file = Mock()
         mock_file.id = "file-id-1"
-        mock_llama_stack_client.vector_stores.files.list.return_value = [mock_file]
+        mock_llama_stack_client.vector_stores_files.list.return_value = Mock(
+            data=[mock_file]
+        )
 
         sources = service._get_files_from_vector_store("legal")
 
@@ -518,7 +522,7 @@ class TestGetFilesFromVectorStore:
         service.client = mock_llama_stack_client
         service.vector_store_map = {"legal": ["legal-vs-id"]}
 
-        mock_llama_stack_client.vector_stores.files.list.side_effect = Exception(
+        mock_llama_stack_client.vector_stores_files.list.side_effect = Exception(
             "Error"
         )
 
@@ -630,7 +634,9 @@ class TestValidateAndRegenerateMetadata:
         # Setup: file in vector store matches metadata
         mock_file = Mock()
         mock_file.id = "file-id-1"
-        mock_llama_stack_client.vector_stores.files.list.return_value = [mock_file]
+        mock_llama_stack_client.vector_stores_files.list.return_value = Mock(
+            data=[mock_file]
+        )
 
         service.file_metadata = {
             "file-id-1": {
@@ -656,7 +662,9 @@ class TestValidateAndRegenerateMetadata:
         # Setup: file in vector store does NOT match metadata
         mock_file = Mock()
         mock_file.id = "new-file-id"  # Different from metadata
-        mock_llama_stack_client.vector_stores.files.list.return_value = [mock_file]
+        mock_llama_stack_client.vector_stores_files.list.return_value = Mock(
+            data=[mock_file]
+        )
 
         # Old metadata with different file_id
         service.file_metadata = {
@@ -685,7 +693,7 @@ class TestValidateAndRegenerateMetadata:
         service.client = mock_llama_stack_client
         service.vector_store_map = {"legal": ["legal-vs-id"]}
 
-        mock_llama_stack_client.vector_stores.files.list.return_value = []
+        mock_llama_stack_client.vector_stores_files.list.return_value = []
 
         service.file_metadata = {"old-file-id": {"original_filename": "test.pdf"}}
 

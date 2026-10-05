@@ -2,10 +2,10 @@ import json
 import os
 from typing import Any
 
-from llama_stack_client import LlamaStackClient
-from llama_stack_client.types import ResponseObject
-from llama_stack_client.types.response_list_response import (
-    OutputOpenAIResponseOutputMessageFileSearchToolCallResult as FileSearchToolCallResult,  # noqa
+from ogx_client import OgxClient
+from ogx_client import OpenAIResponseObject as ResponseObject
+from ogx_client import (
+    OpenAIResponseOutputMessageFileSearchToolCallResults as FileSearchToolCallResult,  # noqa
 )
 from openai import OpenAI
 
@@ -33,7 +33,7 @@ class RAGService:
         file_metadata_path: "str | None" = None,
     ) -> "None":
         self.llama_stack_url = llama_stack_url
-        self.client: "LlamaStackClient | None" = None
+        self.client: "OgxClient | None" = None
         self.openai_client: "OpenAI | None" = None
         self.vector_store_map: "dict[str, list[str]]" = {}
         self.all_vector_store_ids: "list[str]" = []
@@ -104,7 +104,10 @@ class RAGService:
         for category, vs_ids in self.vector_store_map.items():
             for vs_id in vs_ids:
                 try:
-                    files = self.client.vector_stores.files.list(vector_store_id=vs_id)
+                    files_resp = self.client.vector_stores_files.list(
+                        vector_store_id=vs_id
+                    )
+                    files = files_resp.data if files_resp else []
                     if not files:
                         continue
                     for file_info in files:
@@ -285,7 +288,7 @@ class RAGService:
         initializes the Llama Stack client and load vector stores.
         """
         try:
-            self.client = LlamaStackClient(base_url=self.llama_stack_url)
+            self.client = OgxClient(base_url=self.llama_stack_url)
             self.client.models.list()
             logger.info("RAG Service: Llama Stack client initialized successfully")
 
@@ -334,7 +337,8 @@ class RAGService:
             logger.warning("RAG Service: No enabled pipelines found")
             return False
 
-        vector_stores = self.client.vector_stores.list() or []
+        vs_resp = self.client.vector_stores.list()
+        vector_stores = vs_resp.data if vs_resp else []
         existing_stores = set()
         for vs in vector_stores:
             vs_name = vs.name.lower() if vs.name else vs.id.lower()
@@ -361,7 +365,8 @@ class RAGService:
             logger.error("RAG Service: Client not initialized")
             return False
 
-        vector_stores = self.client.vector_stores.list() or []
+        vs_resp = self.client.vector_stores.list()
+        vector_stores = vs_resp.data if vs_resp else []
         vector_store_list = list(vector_stores)
 
         if not vector_stores or len(vector_store_list) == 0:
@@ -531,7 +536,10 @@ class RAGService:
 
         for vs_id in vector_store_ids:
             try:
-                files = self.client.vector_stores.files.list(vector_store_id=vs_id)
+                files_resp = self.client.vector_stores_files.list(
+                    vector_store_id=vs_id
+                )
+                files = files_resp.data if files_resp else []
             except Exception as e:
                 logger.debug(f"Could not list files for vector store {vs_id}: {e}")
                 continue
