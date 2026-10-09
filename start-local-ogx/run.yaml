@@ -49,7 +49,7 @@ providers:
   - provider_id: builtin-files
     provider_type: inline::localfs
     config:
-      storage_dir: ${env.FILES_STORAGE_DIR:=/data/files}
+      storage_dir: ${env.FILES_STORAGE_DIR:=.data/files}
       metadata_store:
         table_name: files_metadata
         backend: sql_default
@@ -106,10 +106,10 @@ storage:
   backends:
     kv_default:
       type: kv_sqlite
-      db_path: ${env.KV_SQL_STORE_DIR:=/data}/kvstore.db
+      db_path: ${env.KV_SQL_STORE_DIR:=.data}/kvstore.db
     sql_default:
       type: sql_sqlite
-      db_path: ${env.SQLITE_STORE_DIR:=/data}/sql_store.db
+      db_path: ${env.SQLITE_STORE_DIR:=.data}/sql_store.db
   stores:
     metadata:
       namespace: registry

@@ -31,10 +31,17 @@ For example
 ```bash
 # only required if you do not override the GUARDRAIL_MODEL environment variable
 ollama pull llama-guard3:1b
+# embedding model required by the vector store / RAG file search; the server
+# refuses to start without it
+ollama pull all-minilm:l6-v2
 ollama serve
 ```
 
 proved sufficient for providing a model to pass the moderation / guardrail checks.
+
+The OGX server validates its configured embedding model (`all-minilm:l6-v2`) at
+startup, so pulling it is mandatory for a local run even if you are not using RAG
+file search.
 
 You can also employ `ollama run llama-guard3:1b --keepalive 60m` for each of those models if ollama is already running. When their
 startup completes, type `/bye` and the provided prompt to return to your terminal.
@@ -75,7 +82,10 @@ The snippet below assumes you are in the top directory of your clone of this rep
 cd start-local-ogx
 uv sync
 source .venv/bin/activate
-uv run ogx stack run run.yaml
+# The Ollama provider only registers when OLLAMA_URL is set; export it before
+# starting so the embedding/inference models are available.
+export OLLAMA_URL=http://localhost:11434/v1
+uv run ogx run run.yaml --insecure
 ```
 
 ### Launch Kubernetes MCP Server
