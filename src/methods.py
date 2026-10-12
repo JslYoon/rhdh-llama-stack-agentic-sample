@@ -365,7 +365,7 @@ def git_agent(
         "type": "mcp",
         "server_label": "github",
         "server_url": "https://api.githubcopilot.com/mcp/",
-        "headers": {"Authorization": f"Bearer {git_token}"},
+        "authorization": git_token,
         "allowed_tools": ["issue_write", "add_issue_comment"],
     }
 
