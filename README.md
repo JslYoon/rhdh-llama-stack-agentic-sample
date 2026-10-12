@@ -30,7 +30,7 @@ For example
 
 ```bash
 # only required if you do not override the GUARDRAIL_MODEL environment variable
-ollama pull llama-guard3:1b
+ollama pull llama-guard3.1:8b
 # embedding model required by the vector store / RAG file search; the server
 # refuses to start without it
 ollama pull all-minilm:l6-v2
@@ -43,7 +43,7 @@ The OGX server validates its configured embedding model (`all-minilm:l6-v2`) at
 startup, so pulling it is mandatory for a local run even if you are not using RAG
 file search.
 
-You can also employ `ollama run llama-guard3:1b --keepalive 60m` for each of those models if ollama is already running. When their
+You can also employ `ollama run llama-guard3.1:8b --keepalive 60m` for each of those models if ollama is already running. When their
 startup completes, type `/bye` and the provided prompt to return to your terminal.
 
 We also recommend you find a model that grades well for tool calling, register it with OGX, and set the
