@@ -51,10 +51,7 @@ def run_guardrail(
     human-readable names of the violated hazard categories.
     """
     guard_messages: "list[ChatCompletionUserMessageParam]" = [
-        cast(
-            ChatCompletionUserMessageParam,
-            {"role": "user", "content": text},
-        )
+        {"role": "user", "content": text}
     ]
     guard_completion = openai_client.chat.completions.create(
         model=guardrail_model,
@@ -140,13 +137,10 @@ def classification_agent(
         logger.debug(f"Classification prompt: {classification_prompt}")
 
         messages: "list[ChatCompletionUserMessageParam]" = [
-            cast(
-                ChatCompletionUserMessageParam,
-                {
-                    "role": "user",
-                    "content": classification_prompt,
-                },
-            )
+            {
+                "role": "user",
+                "content": classification_prompt,
+            }
         ]
         completion = openai_client.beta.chat.completions.parse(
             model=topic_llm,
@@ -273,15 +267,12 @@ def support_classification_agent(
 
     try:
         messages: "list[ChatCompletionUserMessageParam]" = [
-            cast(
-                ChatCompletionUserMessageParam,
-                {
-                    "role": "user",
-                    "content": WorkflowAgentPrompts.SUPPORT_CLASSIFICATION_PROMPT.format(  # noqa
-                        state_input=state["input"]
-                    ),
-                },
-            )
+            {
+                "role": "user",
+                "content": WorkflowAgentPrompts.SUPPORT_CLASSIFICATION_PROMPT.format(  # noqa
+                    state_input=state["input"]
+                ),
+            }
         ]
         completion = openai_client.beta.chat.completions.parse(
             model=topic_llm,
