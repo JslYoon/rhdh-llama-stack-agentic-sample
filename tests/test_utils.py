@@ -2,7 +2,7 @@ import json
 from unittest.mock import Mock, patch
 
 from src.utils import (
-    check_llama_stack_availability,
+    check_ogx_availability,
     clean_text,
     extract_mcp_output,
     extract_rag_response_text,
@@ -359,7 +359,7 @@ class TestExtractMcpOutput:
 
 class TestCheckLlamaStackAvailability:
     """
-    tests for check_llama_stack_availability function.
+    tests for check_ogx_availability function.
     """
 
     def test_successful_connection_without_model_check(self):
@@ -367,7 +367,7 @@ class TestCheckLlamaStackAvailability:
         mock_client.models.list.return_value = []
 
         with patch("src.utils.OgxClient", return_value=mock_client):
-            result = check_llama_stack_availability("http://localhost:8321")
+            result = check_ogx_availability("http://localhost:8321")
 
         assert result["connected"] is True
         assert result["error_message"] == ""
@@ -384,7 +384,7 @@ class TestCheckLlamaStackAvailability:
         mock_client.models.list.return_value = Mock(data=[mock_model1, mock_model2])
 
         with patch("src.utils.OgxClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=["model-1", "model-2"],
             )
@@ -402,7 +402,7 @@ class TestCheckLlamaStackAvailability:
         mock_client.models.list.return_value = Mock(data=[mock_model])
 
         with patch("src.utils.OgxClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=["model-1", "model-2", "model-3"],
             )
@@ -417,7 +417,7 @@ class TestCheckLlamaStackAvailability:
         mock_client.models.list.return_value = []
 
         with patch("src.utils.OgxClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=["model-1", "model-2"],
             )
@@ -431,10 +431,10 @@ class TestCheckLlamaStackAvailability:
             "src.utils.OgxClient",
             side_effect=Exception("Connection refused"),
         ):
-            result = check_llama_stack_availability("http://localhost:8321")
+            result = check_ogx_availability("http://localhost:8321")
 
         assert result["connected"] is False
-        assert "Cannot connect to Llama Stack server" in result["error_message"]
+        assert "Cannot connect to OGX server" in result["error_message"]
         assert "http://localhost:8321" in result["error_message"]
         assert result["available_models"] == []
         assert result["missing_models"] == []
@@ -444,17 +444,17 @@ class TestCheckLlamaStackAvailability:
             "src.utils.OgxClient",
             side_effect=Exception("ConnectError: Failed to establish connection"),
         ):
-            result = check_llama_stack_availability("http://localhost:8321")
+            result = check_ogx_availability("http://localhost:8321")
 
         assert result["connected"] is False
-        assert "Cannot connect to Llama Stack server" in result["error_message"]
+        assert "Cannot connect to OGX server" in result["error_message"]
 
     def test_timeout_error(self):
         with patch(
             "src.utils.OgxClient",
             side_effect=Exception("Request timeout exceeded"),
         ):
-            result = check_llama_stack_availability("http://localhost:8321")
+            result = check_ogx_availability("http://localhost:8321")
 
         assert result["connected"] is False
         assert "timed out" in result["error_message"]
@@ -464,10 +464,10 @@ class TestCheckLlamaStackAvailability:
             "src.utils.OgxClient",
             side_effect=Exception("Some unexpected error"),
         ):
-            result = check_llama_stack_availability("http://localhost:8321")
+            result = check_ogx_availability("http://localhost:8321")
 
         assert result["connected"] is False
-        assert "Llama Stack connection failed" in result["error_message"]
+        assert "OGX connection failed" in result["error_message"]
         assert "Some unexpected error" in result["error_message"]
 
     def test_model_with_id_attribute_instead_of_identifier(self):
@@ -478,7 +478,7 @@ class TestCheckLlamaStackAvailability:
         mock_client.models.list.return_value = Mock(data=[mock_model])
 
         with patch("src.utils.OgxClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=["model-with-id"],
             )
@@ -492,7 +492,7 @@ class TestCheckLlamaStackAvailability:
         mock_client.models.list.return_value = []
 
         with patch("src.utils.OgxClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=[],
             )
@@ -506,7 +506,7 @@ class TestCheckLlamaStackAvailability:
         mock_client.models.list.return_value = None
 
         with patch("src.utils.OgxClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=["model-1"],
             )

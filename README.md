@@ -56,6 +56,7 @@ For maximum flexibility, the application breaks down the use of AI models along 
 
 In our testing, the following models achieved tolerable performance for both `INFERENCE_MODEL` AND `MCP_TOOL_MODEL`:
 
+- `ollama/llama3.1:8b` via local Ollama run.
 - `qwen3-8b-fp8` deployed using OpenShift AI in our local environment, where we leverage the OGX vllm provider
 - `gemini-2.5-pro` via the Google public offering, where we leverage the Ogx gemini provider.
 - `gpt-4o` and `gpt-4o-mini` via the OpenAI public offering, where we leverage the Ogx openai provider

@@ -27,8 +27,8 @@ from src.constants import (
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_HTTP_REQUEST_TIMEOUT,
     DEFAULT_INGESTION_MODE,
-    DEFAULT_LLAMA_STACK_RETRY_DELAY,
-    DEFAULT_LLAMA_STACK_WAITING_RETRIES,
+    DEFAULT_OGX_RETRY_DELAY,
+    DEFAULT_OGX_WAITING_RETRIES,
 )
 from src.exceptions import IngestionPipelineError
 from src.types import (
@@ -38,7 +38,7 @@ from src.types import (
     SourceTypes,
     VectorDBConfig,
 )
-from src.utils import check_llama_stack_availability, clean_text, logger
+from src.utils import check_ogx_availability, clean_text, logger
 
 
 class IngestionService:
@@ -59,11 +59,11 @@ class IngestionService:
 
         self.config_path = config_path
 
-        # Llama Stack setup - prefer env var over config file
+        # OGX setup - prefer env var over config file
         self.llama_stack_url: "str" = os.environ.get(
             "LLAMA_STACK_URL", _config["llamastack"]["base_url"]
         )
-        self.client = self._initialize_llama_stack_client()
+        self.client = self._initialize_ogx_client()
         self.vector_store_ids: "list[str]" = []
 
         # Vector DB setup
@@ -217,36 +217,36 @@ class IngestionService:
         logger.debug("Ingestion config validated successfully!")
         return True
 
-    def _initialize_llama_stack_client(
+    def _initialize_ogx_client(
         self,
-        max_retries: "int" = DEFAULT_LLAMA_STACK_WAITING_RETRIES,
-        retry_delay: "int" = DEFAULT_LLAMA_STACK_RETRY_DELAY,
+        max_retries: "int" = DEFAULT_OGX_WAITING_RETRIES,
+        retry_delay: "int" = DEFAULT_OGX_RETRY_DELAY,
     ) -> "OgxClient":
         logger.debug(
-            f"Connecting Llama Stack Client to Server at {self.llama_stack_url}..."
+            f"Connecting OGX Client to Server at {self.llama_stack_url}..."
         )
 
         for attempt in range(max_retries):
-            result = check_llama_stack_availability(self.llama_stack_url)
+            result = check_ogx_availability(self.llama_stack_url)
 
             if result["connected"]:
-                logger.debug("Llama Stack Client connected successfully!")
+                logger.debug("OGX Client connected successfully!")
                 return OgxClient(base_url=self.llama_stack_url)
 
             if attempt < max_retries - 1:
                 logger.info(
                     f"Attempt {attempt + 1}/{max_retries}: "
-                    f"Llama Stack not ready yet. "
+                    f"OGX not ready yet. "
                     f"Retrying in {retry_delay}s..."
                 )
                 time.sleep(retry_delay)
             else:
                 logger.error(
-                    f"Failed to connect to Llama Stack "
+                    f"Failed to connect to OGX "
                     f"after {max_retries} attempts: {result['error_message']}"
                 )
 
-        logger.error("Failed to connect to Llama Stack. Exiting.")
+        logger.error("Failed to connect to OGX. Exiting.")
         sys.exit(1)
 
     def _create_local_file(
@@ -454,7 +454,7 @@ class IngestionService:
     ) -> File | None:
         """
         processes a single PDF document.
-        Preserves original filename when uploading to Llama Stack for
+        Preserves original filename when uploading to OGX for
         better metadata recovery after pod restarts.
         """
         try:
@@ -467,7 +467,7 @@ class IngestionService:
             cleaned_text = clean_text(markdown_text)
 
             # create temp file with original filename (not random temp name)
-            # this preserves the filename in Llama Stack for metadata recovery
+            # this preserves the filename in OGX for metadata recovery
             temp_dir = tempfile.mkdtemp()
             # replace .pdf extension with .txt for the processed content
             processed_filename = original_filename
@@ -476,7 +476,7 @@ class IngestionService:
             tmp_file_path = os.path.join(temp_dir, processed_filename)
 
             try:
-                # create file in llama stack
+                # create file in OGX
                 with open(tmp_file_path, "w", encoding="utf-8") as tmp_file:
                     tmp_file.write(cleaned_text)
 
@@ -528,10 +528,10 @@ class IngestionService:
         )
 
         # filter out None values (failed processing)
-        llama_documents = [doc for doc in results if doc is not None]
+        documents = [doc for doc in results if doc is not None]
 
-        logger.info(f"Total documents processed: {len(llama_documents)}")
-        return llama_documents
+        logger.info(f"Total documents processed: {len(documents)}")
+        return documents
 
     def _insert_single_document(
         self, vector_store_id: str, vector_store_name: str, doc: File
@@ -600,7 +600,7 @@ class IngestionService:
 
         vector_store = None
         try:
-            # asyncio.to_thread moves the synchronous llama-stack-client
+            # asyncio.to_thread moves the synchronous OGX-client
             # call to a separate thread so the asyncio (event) loop keeps
             # running.
             vector_store = await asyncio.to_thread(

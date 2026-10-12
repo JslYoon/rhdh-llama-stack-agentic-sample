@@ -87,7 +87,7 @@ def sample_metadata_file(temp_dir, sample_file_metadata):
 
 
 @pytest.fixture
-def mock_llama_stack_client():
+def mock_ogx_client():
     client = Mock()
     client.models.list.return_value = []
     client.vector_stores.list.return_value = []
@@ -181,13 +181,13 @@ def mock_document_converter():
 
 
 @pytest.fixture
-def mock_llama_stack_availability():
+def mock_ogx_availability():
     """
-    fixture that patches check_llama_stack_availability to return connected status.
+    fixture that patches check_ogx_availability to return connected status.
     Use this in tests that need IngestionService initialization.
     """
     with patch(
-        "src.ingest.check_llama_stack_availability",
+        "src.ingest.check_ogx_availability",
         return_value={"connected": True, "error_message": ""},
     ) as mock:
         yield mock
