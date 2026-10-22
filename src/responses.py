@@ -17,7 +17,7 @@ from src.constants import (
 )
 from src.exceptions import NoVectorStoresFoundError
 from src.types import Pipeline, SourceTypes
-from src.utils import logger
+from src.utils import list_all_vector_store_files, list_all_vector_stores, logger
 
 
 class RAGService:
@@ -104,10 +104,7 @@ class RAGService:
         for category, vs_ids in self.vector_store_map.items():
             for vs_id in vs_ids:
                 try:
-                    files_resp = self.client.vector_stores_files.list(
-                        vector_store_id=vs_id
-                    )
-                    files = files_resp.data if files_resp else []
+                    files = list_all_vector_store_files(self.client, vs_id)
                     if not files:
                         continue
                     for file_info in files:
@@ -337,8 +334,7 @@ class RAGService:
             logger.warning("RAG Service: No enabled pipelines found")
             return False
 
-        vs_resp = self.client.vector_stores.list()
-        vector_stores = vs_resp.data if vs_resp else []
+        vector_stores = list_all_vector_stores(self.client)
         existing_stores = set()
         for vs in vector_stores:
             vs_name = vs.name.lower() if vs.name else vs.id.lower()
@@ -365,11 +361,9 @@ class RAGService:
             logger.error("RAG Service: Client not initialized")
             return False
 
-        vs_resp = self.client.vector_stores.list()
-        vector_stores = vs_resp.data if vs_resp else []
-        vector_store_list = list(vector_stores)
+        vector_stores = list_all_vector_stores(self.client)
 
-        if not vector_stores or len(vector_store_list) == 0:
+        if not vector_stores:
             err = "RAG Service: No vector stores found"
             logger.warning(err)
             raise NoVectorStoresFoundError(err)
@@ -536,10 +530,7 @@ class RAGService:
 
         for vs_id in vector_store_ids:
             try:
-                files_resp = self.client.vector_stores_files.list(
-                    vector_store_id=vs_id
-                )
-                files = files_resp.data if files_resp else []
+                files = list_all_vector_store_files(self.client, vs_id)
             except Exception as e:
                 logger.debug(f"Could not list files for vector store {vs_id}: {e}")
                 continue

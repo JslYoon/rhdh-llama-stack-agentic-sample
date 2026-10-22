@@ -1,4 +1,5 @@
 import os
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -6,6 +7,13 @@ import pytest
 from src.exceptions import NoVectorStoresFoundError
 from src.responses import RAGService
 from src.types import Pipeline, SourceConfig, SourceTypes
+
+
+def _page(items):
+    """Pagination-shaped mock page (has_more=False) for OGX list endpoints."""
+    return SimpleNamespace(
+        data=items, has_more=False, last_id=items[-1] if items else None
+    )
 
 
 class TestRAGServiceInit:
@@ -198,8 +206,8 @@ class TestLoadVectorStores:
         mock_vs2.id = "hr-vs-id"
         mock_vs2.name = "hr-vector-db"
 
-        mock_ogx_client.vector_stores.list.return_value = Mock(
-            data=[mock_vs1, mock_vs2]
+        mock_ogx_client.vector_stores.list.return_value = _page(
+            [mock_vs1, mock_vs2]
         )
 
         pipelines = []
@@ -214,7 +222,7 @@ class TestLoadVectorStores:
         assert "hr" in service.vector_store_map
 
     def test_load_vector_stores_with_no_stores(self, mock_ogx_client):
-        mock_ogx_client.vector_stores.list.return_value = []
+        mock_ogx_client.vector_stores.list.return_value = _page([])
 
         pipelines = []
         service = RAGService(pipelines=pipelines)
@@ -498,8 +506,8 @@ class TestGetFilesFromVectorStore:
 
         mock_file = Mock()
         mock_file.id = "file-id-1"
-        mock_ogx_client.vector_stores_files.list.return_value = Mock(
-            data=[mock_file]
+        mock_ogx_client.vector_stores_files.list.return_value = _page(
+            [mock_file]
         )
 
         sources = service._get_files_from_vector_store("legal")
@@ -634,8 +642,8 @@ class TestValidateAndRegenerateMetadata:
         # Setup: file in vector store matches metadata
         mock_file = Mock()
         mock_file.id = "file-id-1"
-        mock_ogx_client.vector_stores_files.list.return_value = Mock(
-            data=[mock_file]
+        mock_ogx_client.vector_stores_files.list.return_value = _page(
+            [mock_file]
         )
 
         service.file_metadata = {
@@ -662,8 +670,8 @@ class TestValidateAndRegenerateMetadata:
         # Setup: file in vector store does NOT match metadata
         mock_file = Mock()
         mock_file.id = "new-file-id"  # Different from metadata
-        mock_ogx_client.vector_stores_files.list.return_value = Mock(
-            data=[mock_file]
+        mock_ogx_client.vector_stores_files.list.return_value = _page(
+            [mock_file]
         )
 
         # Old metadata with different file_id
@@ -693,7 +701,7 @@ class TestValidateAndRegenerateMetadata:
         service.client = mock_ogx_client
         service.vector_store_map = {"legal": ["legal-vs-id"]}
 
-        mock_ogx_client.vector_stores_files.list.return_value = []
+        mock_ogx_client.vector_stores_files.list.return_value = _page([])
 
         service.file_metadata = {"old-file-id": {"original_filename": "test.pdf"}}
 
@@ -701,6 +709,39 @@ class TestValidateAndRegenerateMetadata:
 
         # Metadata should remain unchanged when no files in vector stores
         assert "old-file-id" in service.file_metadata
+
+    def test_collects_files_across_pages(self, mock_ogx_client):
+        """Files beyond the first page must be validated and regenerated too."""
+        pipelines = []
+        service = RAGService(pipelines=pipelines)
+        service.client = mock_ogx_client
+        service.vector_store_map = {"legal": ["legal-vs-id"]}
+
+        mock_file_1 = Mock()
+        mock_file_1.id = "file-page-1"
+        mock_file_2 = Mock()
+        mock_file_2.id = "file-page-2"
+        mock_ogx_client.vector_stores_files.list.side_effect = [
+            SimpleNamespace(data=[mock_file_1], has_more=True, last_id="file-page-1"),
+            SimpleNamespace(data=[mock_file_2], has_more=False, last_id="file-page-2"),
+        ]
+
+        # metadata knows only the second page's file -> mismatch either way,
+        # regeneration must rebuild from ALL files including both pages
+        service.file_metadata = {
+            "file-page-2": {"original_filename": "b.pdf", "category": "legal"},
+        }
+        service.source_url_map = {"legal": "https://github.com/test/repo/blob/main/docs"}
+
+        mock_ogx_client.files.retrieve.side_effect = lambda file_id: Mock(
+            filename=f"{file_id}.txt"
+        )
+
+        service._validate_and_regenerate_metadata()
+
+        # regenerated metadata must contain files from BOTH pages
+        assert "file-page-1" in service.file_metadata
+        assert "file-page-2" in service.file_metadata
 
 
 class TestRegenerateFileMetadata:
