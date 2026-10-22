@@ -1,5 +1,6 @@
 import json
 import os
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -8,6 +9,13 @@ import yaml
 from src.exceptions import IngestionPipelineError
 from src.ingest import IngestionService
 from src.types import Pipeline, SourceConfig, SourceTypes
+
+
+def _page(items):
+    """Pagination-shaped mock page (has_more=False) for OGX list endpoints."""
+    return SimpleNamespace(
+        data=items, has_more=False, last_id=items[-1] if items else None
+    )
 
 
 class TestIngestionServiceInit:
@@ -438,8 +446,8 @@ class TestCreateVectorDb:
         mock_existing_vs = Mock()
         mock_existing_vs.name = "test-vector-db"
         mock_existing_vs.id = "existing-vector-store-id"
-        mock_ogx_client.vector_stores.list.return_value = Mock(
-            data=[mock_existing_vs]
+        mock_ogx_client.vector_stores.list.return_value = _page(
+            [mock_existing_vs]
         )
 
         with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
@@ -450,6 +458,41 @@ class TestCreateVectorDb:
 
         result = await service.create_vector_db("test-vector-db", [mock_doc])
 
+        assert result is True
+
+    @pytest.mark.anyio
+    async def test_create_vector_db_already_exists_beyond_first_page(
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
+    ):
+        mock_ogx_client.vector_stores.create.side_effect = Exception(
+            "already exists"
+        )
+
+        # named store sits on the SECOND page of the list response
+        mock_other_vs = Mock()
+        mock_other_vs.name = "another-vector-db"
+        mock_other_vs.id = "other-vs-id"
+        mock_existing_vs = Mock()
+        mock_existing_vs.name = "test-vector-db"
+        mock_existing_vs.id = "existing-vector-store-id"
+        mock_ogx_client.vector_stores.list.side_effect = [
+            SimpleNamespace(
+                data=[mock_other_vs], has_more=True, last_id="other-vs-id"
+            ),
+            SimpleNamespace(
+                data=[mock_existing_vs], has_more=False, last_id="existing-vector-store-id"
+            ),
+        ]
+
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
+            service = IngestionService(sample_config_file)
+
+        mock_doc = Mock()
+        mock_doc.id = "doc-id-1"
+
+        result = await service.create_vector_db("test-vector-db", [mock_doc])
+
+        # recovery path must find the store even past the first page
         assert result is True
 
 

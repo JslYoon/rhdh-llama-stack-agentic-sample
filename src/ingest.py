@@ -38,7 +38,13 @@ from src.types import (
     SourceTypes,
     VectorDBConfig,
 )
-from src.utils import check_ogx_availability, clean_text, logger
+from src.utils import (
+    check_ogx_availability,
+    clean_text,
+    list_all_vector_store_files,
+    list_all_vector_stores,
+    logger,
+)
 
 
 class IngestionService:
@@ -617,8 +623,9 @@ class IngestionService:
 
                 # vector store exists, find it by name to get its ID
                 # to continue ingestion
-                vs_resp = await asyncio.to_thread(self.client.vector_stores.list)
-                for vs in (vs_resp.data if vs_resp else []):
+                for vs in await asyncio.to_thread(
+                    list_all_vector_stores, self.client
+                ):
                     if vs.name == vector_store_name:
                         vector_store = vs
                         break
@@ -634,12 +641,10 @@ class IngestionService:
                 # when multiple parallel sessions race to populate the same store.
                 # TODO: investigate more robust approaches
                 try:
-                    existing_files_resp = await asyncio.to_thread(
-                        self.client.vector_stores_files.list,
-                        vector_store_id=vector_store.id,
-                    )
-                    existing_files = (
-                        existing_files_resp.data if existing_files_resp else []
+                    existing_files = await asyncio.to_thread(
+                        list_all_vector_store_files,
+                        self.client,
+                        vector_store.id,
                     )
                     if existing_files and len(existing_files) > 0:
                         logger.info(

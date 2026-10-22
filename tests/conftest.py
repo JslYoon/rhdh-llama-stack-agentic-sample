@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -90,10 +91,16 @@ def sample_metadata_file(temp_dir, sample_file_metadata):
 def mock_ogx_client():
     client = Mock()
     client.models.list.return_value = []
-    client.vector_stores.list.return_value = []
+    # pagination-shaped empty page (bare Mock would loop/hang list helpers)
+    client.vector_stores.list.return_value = SimpleNamespace(
+        data=[], has_more=False, last_id=None
+    )
     client.vector_stores.create.return_value = Mock(id="test-vector-store-id")
     client.vector_stores_files.create.return_value = Mock(
         id="test-file-id", status="completed"
+    )
+    client.vector_stores_files.list.return_value = SimpleNamespace(
+        data=[], has_more=False, last_id=None
     )
     client.files.create.return_value = Mock(id="test-file-id")
     return client
