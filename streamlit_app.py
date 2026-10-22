@@ -24,6 +24,7 @@ from src.types import Pipeline, WorkflowState
 from src.utils import (
     check_ogx_availability,
     ingestion_lock,
+    list_all_vector_stores,
     logger,
     submission_states,
 )
@@ -34,7 +35,7 @@ API_KEY = os.getenv("OPENAI_API_KEY", "not applicable")
 
 # INFERENCE_SERVER_OPENAI: URL of the inference server
 INFERENCE_SERVER_OPENAI = os.getenv(
-    "LLAMA_STACK_SERVER_OPENAI", "http://localhost:8321/v1/openai/v1"
+    "LLAMA_STACK_SERVER_OPENAI", "http://localhost:8321/v1"
 )
 
 # INFERENCE_MODEL: Model to use for inference
@@ -136,6 +137,7 @@ def initialize_workflow(_pipelines: "list[Pipeline]") -> "tuple[Any, RAGService]
     workflow_builder = Workflow(rag_service=rag_service)
     compiled_workflow = workflow_builder.make_workflow(
         tools_llm=INFERENCE_MODEL,
+        mcp_tool_model=MCP_TOOL_MODEL,
         git_token=GITHUB_TOKEN,
         github_url=GITHUB_URL,
         guardrail_model=GUARDRAIL_MODEL,
@@ -217,10 +219,7 @@ def count_vector_stores() -> "int":
     """
     try:
         client = OgxClient(base_url=LLAMA_STACK_URL)
-        vs_resp = client.vector_stores.list()
-        vector_stores = vs_resp.data if vs_resp else []
-        vector_store_list = list(vector_stores)
-        count = len(vector_store_list)
+        count = len(list_all_vector_stores(client))
         logger.debug(f"Found {count} vector stores in database")
         return count
     except Exception as e:
