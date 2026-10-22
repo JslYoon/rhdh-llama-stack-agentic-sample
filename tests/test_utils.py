@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from src.utils import (
@@ -6,6 +7,8 @@ from src.utils import (
     clean_text,
     extract_mcp_output,
     extract_rag_response_text,
+    list_all_vector_store_files,
+    list_all_vector_stores,
     route_to_next_node,
     support_route_to_next_node,
 )
@@ -514,3 +517,51 @@ class TestCheckLlamaStackAvailability:
         assert result["connected"] is True
         assert result["available_models"] == []
         assert result["missing_models"] == ["model-1"]
+
+
+class TestPaginationHelpers:
+    """
+    tests for the paginated list helpers over OGX OpenAI-compatible
+    list endpoints (has_more / last_id cursor protocol).
+    """
+
+    def _client(self, pages):
+        """pages: list of (data_list, has_more, last_id) tuples returned in order."""
+        mock_client = Mock()
+        mock_client.vector_stores.list.side_effect = [
+            SimpleNamespace(data=d, has_more=m, last_id=l) for (d, m, l) in pages
+        ]
+        mock_client.vector_stores_files.list.side_effect = [
+            SimpleNamespace(data=d, has_more=m, last_id=l) for (d, m, l) in pages
+        ]
+        return mock_client
+
+    def test_single_page(self):
+        client = self._client([(["a", "b"], False, "b")])
+        assert list_all_vector_stores(client) == ["a", "b"]
+
+    def test_multi_page_follows_after_cursor(self):
+        client = self._client([(["a"], True, "a"), (["b"], False, "b")])
+        assert list_all_vector_stores(client) == ["a", "b"]
+        # second call passed after=last_id of first page
+        client.vector_stores.list.assert_called_with(limit=100, after="a")
+
+    def test_empty_page_with_has_more_continues(self):
+        client = self._client([([], True, "x"), (["a"], False, "a")])
+        assert list_all_vector_stores(client) == ["a"]
+
+    def test_max_pages_cap_returns_partial(self):
+        # has_more stays True forever; cap at max_pages=3, no exception
+        client = self._client([(["a"], True, "a")] * 5)
+        assert list_all_vector_stores(client, max_pages=3) == ["a", "a", "a"]
+
+    def test_missing_last_id_with_has_more_stops(self):
+        client = self._client([(["a"], True, None)])
+        assert list_all_vector_stores(client) == ["a"]
+
+    def test_files_variant_passes_vector_store_id(self):
+        client = self._client([(["f1"], False, "f1")])
+        assert list_all_vector_store_files(client, "vs-123") == ["f1"]
+        client.vector_stores_files.list.assert_called_once_with(
+            vector_store_id="vs-123", limit=100, after=None
+        )

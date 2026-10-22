@@ -247,3 +247,58 @@ def check_ogx_availability(
         logger.error(f"OGX health check failed: {result['error_message']}")
 
     return result
+
+
+def list_all_vector_stores(
+    client: OgxClient, page_size: int = 100, max_pages: int = 50
+) -> "list[Any]":
+    """List all vector stores, following the OGX pagination cursor.
+
+    The OGX OpenAI-compatible list endpoints return one page at a time
+    (``.data``, ``.has_more``, ``.last_id``); this helper pages through
+    with ``limit=page_size`` and ``after=last_id`` until ``has_more`` is
+    false, the page cap is hit, or the cursor is missing.
+    """
+    results: "list[Any]" = []
+    after: "str | None" = None
+    for _ in range(max_pages):
+        resp = client.vector_stores.list(limit=page_size, after=after)
+        data = resp.data if resp else []
+        results.extend(data or [])
+        if resp is None or not getattr(resp, "has_more", False):
+            return results
+        after = getattr(resp, "last_id", None)
+        if after is None:  # malformed page: cursor missing, stop rather than loop
+            logger.warning("Pagination: has_more with no last_id, stopping")
+            return results
+    logger.warning(
+        f"Pagination: hit max_pages={max_pages} cap, results may be truncated"
+    )
+    return results
+
+
+def list_all_vector_store_files(
+    client: OgxClient,
+    vector_store_id: str,
+    page_size: int = 100,
+    max_pages: int = 50,
+) -> "list[Any]":
+    """List all files in a vector store, following the pagination cursor."""
+    results: "list[Any]" = []
+    after: "str | None" = None
+    for _ in range(max_pages):
+        resp = client.vector_stores_files.list(
+            vector_store_id=vector_store_id, limit=page_size, after=after
+        )
+        data = resp.data if resp else []
+        results.extend(data or [])
+        if resp is None or not getattr(resp, "has_more", False):
+            return results
+        after = getattr(resp, "last_id", None)
+        if after is None:
+            logger.warning("Pagination: has_more with no last_id, stopping")
+            return results
+    logger.warning(
+        f"Pagination: hit max_pages={max_pages} cap, results may be truncated"
+    )
+    return results
