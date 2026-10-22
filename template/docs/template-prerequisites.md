@@ -61,7 +61,7 @@ An API key can be obtained from [platform.openai.com](https://platform.openai.co
 #### Option 2: Ollama (Development)
 
 - Deploy Ollama in-cluster or on a connected machine
-- Pull required models: `ollama pull llama-guard3:1b`
+- Pull required models: `ollama pull llama-guard3:8b`
 - No GPU required for smaller models
 
 #### Option 3: OpenAI API

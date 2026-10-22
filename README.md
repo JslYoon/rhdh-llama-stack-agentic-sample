@@ -15,7 +15,7 @@ The sections below provide a guide
 A hint on what you will find
 
 - Use of LangGraph's [Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api)
-- Use of [OpenAI Moderations](https://platform.openai.com/docs/guides/moderation) provided by OGX's [OpenAI-compatible API endpoint](https://ogx.github.io/docs/providers/openai)
+- Use of [Llama Guard 3](https://llama.meta.com/docs/model-cards-and-prompt-formats/llama-guard-3) for content safety, run as a chat completion against the guardrail model via OGX's [OpenAI-compatible API endpoint](https://ogx.github.io/docs/providers/openai)
 - Use of Red Hat's [Kubernetes MCP Server](https://developers.redhat.com/articles/2025/09/25/kubernetes-mcp-server-ai-powered-cluster-management)
 - Use of GitHub's [Remote GitHub MCP Server](https://github.com/mcp/github/github-mcp-server)
 
@@ -30,7 +30,7 @@ For example
 
 ```bash
 # only required if you do not override the GUARDRAIL_MODEL environment variable
-ollama pull llama-guard3.1:8b
+ollama pull llama-guard3:8b
 # embedding model required by the vector store / RAG file search; the server
 # refuses to start without it
 ollama pull all-minilm:l6-v2
@@ -43,11 +43,14 @@ The OGX server validates its configured embedding model (`all-minilm:l6-v2`) at
 startup, so pulling it is mandatory for a local run even if you are not using RAG
 file search.
 
-You can also employ `ollama run llama-guard3.1:8b --keepalive 60m` for each of those models if ollama is already running. When their
+You can also employ `ollama run llama-guard3:8b --keepalive 60m` for each of those models if ollama is already running. When their
 startup completes, type `/bye` and the provided prompt to return to your terminal.
 
 We also recommend you find a model that grades well for tool calling, register it with OGX, and set the
-`MCP_TOOL_MODEL` environment variable to the model's ID as seen when running `ogx_client models list`.
+`MCP_TOOL_MODEL` environment variable to the model's ID as seen when running (server must be running on :8321):
+```
+uv run python -c "from ogx_client import OgxClient; [print(getattr(m,'identifier',None) or m.id) for m in OgxClient(base_url='http://localhost:8321').models.list().data]"
+```
 
 For maximum flexibility, the application breaks down the use of AI models along these lines:
 
@@ -122,11 +125,11 @@ The sample will create issues against the repository indicated by `GITHUB_URL` a
 
 ### Validate OGX Setup
 
-Open a new terminal and navigate to the project root directory. Activate your existing virtual environment and use the CLI tool to test your setup.
+Open a new terminal and navigate to the project root directory. Activate your existing virtual environment and verify the server responds. The `ogx-client` package does not ship a CLI, so the check is a one-liner instead:
 
 ```bash
 source .venv/bin/activate
-uv run ogx-client configure --endpoint http://localhost:8321 --api-key none
+uv run python -c "from ogx_client import OgxClient; print(OgxClient(base_url='http://localhost:8321').models.list())"
 ```
 
 ## Run the application Code
@@ -250,4 +253,4 @@ but again without success.
 
 ## Safety / Guardrails
 
-This sample uses OGX's OpenAI Moderations API for content safety and guardrails. The moderations API provides built-in checks that work with models like `ollama/llama-guard3:8b` to flag inappropriate content and ensure safe interactions.
+This sample uses Llama Guard 3 for content safety and guardrails. OGX 1.2.5 no longer serves an OpenAI-compatible moderations endpoint, so the guardrail sends the text to the configured guard model (e.g. `ollama/llama-guard3:8b`) as a chat completion; Llama Guard replies with `safe` or `unsafe` followed by the violated hazard categories, which the application maps to human-readable names.

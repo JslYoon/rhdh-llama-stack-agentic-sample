@@ -10,7 +10,7 @@ This AI Software Template allows you to customize and deploy a complete agentic 
 |-----------|-------------|---------|----------|
 | **Name** | Unique name for your application | - | Yes |
 | **Owner** | Owner of the component in RHDH | `user:guest` | Yes |
-| **ArgoCD Namespace** | Target namespace for ArgoCD | `openshift-gitops` | Yes |
+| **ArgoCD Namespace** | Target namespace for ArgoCD | `ai-rhdh` | Yes |
 | **ArgoCD Instance** | ArgoCD instance name | `default` | Yes |
 | **ArgoCD Project** | ArgoCD project name | `default` | Yes |
 | **Include ArgoCD App Label** | Include a user provided ArgoCD Application Label | `true` | No |
