@@ -565,3 +565,19 @@ class TestPaginationHelpers:
         client.vector_stores_files.list.assert_called_once_with(
             vector_store_id="vs-123", limit=100, after=None
         )
+
+    def test_falsy_empty_page_with_has_more_continues(self):
+        """Real SDK pages are falsy when data is empty (pydantic __len__).
+
+        The helper must not treat a falsy page as 'no more pages': it must
+        still read has_more and follow the cursor.
+        """
+        from ogx_client.models import VectorStoreListResponse
+
+        client = Mock()
+        client.vector_stores.list.side_effect = [
+            # real SDK shape: empty page, falsy, but has_more=True
+            VectorStoreListResponse(data=[], first_id="", last_id="x", has_more=True),
+            SimpleNamespace(data=["a"], has_more=False, last_id="a"),
+        ]
+        assert list_all_vector_stores(client) == ["a"]
